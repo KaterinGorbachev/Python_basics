@@ -1,4 +1,4 @@
-#HANGMAN GAME
+# HANGMAN GAME
 
 The general operation of the game is as follows:
 
@@ -12,21 +12,30 @@ The hang has a trunk made of | in a number of the letters in the word, guessed l
 On the left side of the trunk when a user does not guess the letter the game draws a man.
 
 Steps:
+
 1-Themes lists
+
 2-Inform the player of the rules
+
 3-Select word category
+
 4-Declare the number of lives and start the game
+
 5-Ask the player to guess a letter
+
 6-Verify that the player is still in the game
+
 7-Print game results
+
 8-Logic to determine if the player won
+
 
 
 ## Code without functions
 
 The [file]() with code 
 
-First step prepare some grafic 
+The first step is to prepare some graphic 
 
 
 ```python 
@@ -60,7 +69,7 @@ if (userChoiceMenu - 1) == 2:
 ```
 
 
-Then making the hang with a specific length
+Then is making the hang with a specific length
 
 
 ```python 
@@ -88,9 +97,9 @@ elif len(userLetra) > 1:
 ```
 
 
-The main checks are for the wright and for the wrong letter. 
+The main checks are for the right and the wrong letter. 
 
-The drawing of a man in the wrong check loop.
+The drawing of a man is in the wrong check loop.
 
 
 ```python 
