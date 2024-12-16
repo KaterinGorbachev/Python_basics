@@ -1,2 +1,3 @@
-# Python---basics-
+# Python basics
+
 Python educational scripts
