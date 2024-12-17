@@ -33,7 +33,7 @@ Steps:
 
 ## Code without functions
 
-The [file]() with code 
+The [file](https://github.com/KaterinGorbachev/Python---basics-/blob/main/hangman_python.md) with code 
 
 The first step is to prepare some graphic 
 
