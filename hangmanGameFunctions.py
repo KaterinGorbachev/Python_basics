@@ -32,9 +32,14 @@ def get_category(categories):
         if category <= 0:
             print("************************************************\n* Just enter a number bigger than 0. Try again *\n************************************************")
             return get_category(categories)
+        elif category> len(categories): 
+            print("************************************************\n* There is no a category with entered number.Try again *\n************************************************")
+            return get_category(categories)
         else: 
             print(f"You have chosen {categories[category-1]}")
             return categories[category-1]
+    
+    
     except: 
         print(f"***************************************\n* Waiting for a number from 1 to {len(categories)}..... *\n***************************************")
         return get_category(categories)
@@ -42,8 +47,14 @@ def get_category(categories):
 
 #give a random word from chosen category
 def get_computer_word(words_lib, category): 
-
-    return random.choice(words_lib[category])
+    
+    try: 
+        return random.choice(words_lib[category])
+    except KeyError: 
+        print("Something whent wrong! Try to get a category first")
+        exit
+        
+        
 
 
 #get a category from a player 
@@ -110,9 +121,139 @@ def menu():
         print(f"You must enter 0, or 1, or 2. ERROR: {e}")
 
 
+class HumanHorca(): 
+
+    startbulk = [" +------+"]
+    bulk = [" ^      |"]
+    head = "  o  "
+    neck = "  |  "
+    leg = "   \\"
+    legTwo = " / \\ "
+    legLong = "   |"
+    legsLong = " | |"
+    suelo = ["============"]
+    letra1 = ["     ","  |"]
+
+    def __init__(self, word): 
+        self.length = [HumanHorca.letra1[:] for i in range(len(word))]
+        self.wrongLetters = []
+        self.correctLetters = []
+        
+       
+    
+
+    
+    def add_wrong_letter(self, letter, word):
+        if letter not in word and letter not in self.wrongLetters and letter not in self.correctLetters:
+            self.wrongLetters.append(letter)
+            
+
+        
+
+    
+
+    def add_correct_letter(self, letter, word): 
+        if letter in word  and letter not in self.wrongLetters and letter not in self.correctLetters: 
+            self.correctLetters.append(letter)
+           
+
+  
+    
+
+    def update_length(self, letter, word): 
+        if len(self.wrongLetters) == 1: 
+            self.length[0][0] = HumanHorca.head
+        elif len(self.wrongLetters) == 2: 
+            self.length[1][0] = HumanHorca.neck
+        elif len(self.wrongLetters) == 3: 
+            self.length[2][0] = HumanHorca.leg
+        elif len(self.wrongLetters) == 4: 
+            self.length[2][0] = HumanHorca.legTwo
+        elif len(self.wrongLetters) == 5: 
+            self.length[3][0] = HumanHorca.legsLong
+        elif len(self.wrongLetters) > 5: 
+            self.length[len(self.wrongLetters)][0] = HumanHorca.legsLong
+
+        for m in range(len(word)): 
+            if word[m] == letter: 
+                self.correctLetters.append(letter)
+                self.length[m][1] = '   '+letter
+
+    
+    ## printing method
+    def print_horca(self): 
+        print(*HumanHorca.startbulk, *HumanHorca.bulk, sep = '\n')
+        for j in self.length: 
+            print(*j)
+        print(*HumanHorca.suelo)
+
+        
+    
+
+    
+    
+#secret = HumanHorca('pan')
+
+#print(*secret.horca)
+#secret.print_horca()
+
+def main(): 
+
+    print("!!!Welcome to the HANGMAN game!!!\nTry to guess the word. \nYou have as many tries as there are letters in the word. The number of letters is the number of | on the right of the hang.\nWith each error appears a part of the man.\nGo and save a sole!\n\n\n Choose the mode of play: \n 1 for PC\n 2 for Player 2\n 0 for Exit")
+    
+    option = menu()
+    
+    if option == 1: 
+        words_library = computer_words()
+        categories = list_categories(words_library)
+        category = get_category(categories)
+        word = get_computer_word(words_library, category).lower()
+
+    elif option == 2: 
+        category = game_master_category() 
+        word = game_master_word().lower()
+
+    elif option == 0: 
+        print("The game is over")
+        exit
+
+    secret = HumanHorca(word)
+
+    secret.print_horca()
+
+    count = 0 
+    while count <= len(word)-1: 
+        letter = get_letter().lower()
+        if letter in secret.correctLetters or letter in secret.wrongLetters:
+            print("You can't use the letter twice.")
+            continue
+        if letter in word:
+            secret.add_correct_letter(letter, word)
+            count +=1
+        else:
+            secret.add_wrong_letter(letter, word)
+            count +=1
+
+        secret.update_length(letter, word)
+        secret.print_horca()
+
+
+    if len(secret.correctLetters) == len(word): 
+        print("Congratulations!!!!!!!!!!!! YOU WIN !!!!!!!!!!")
+
+    else: 
+        print("Nice try! Lets play again!")
+        main()
+    
 
 
 
+
+
+
+
+
+'''
 def main(): 
 
     print("!!!Welcome to the HANGMAN game!!!\nTry to guess the word. \nYou have as many tries as there are letters in the word. The number of letters is the number of | on the right of the hang.\nWith each error appears a part of the man.\nGo and save a sole!\n\n\n Choose the mode of play: \n 1 for PC\n 2 for Player 2\n 0 for Exit")
@@ -150,7 +291,7 @@ def main():
     suelo = ["============"]
     humanHorca = [letra1[:] for i in range(len(word))]
 
-    print(word)
+    
     while count < len(word): 
         letter = get_letter().lower()
         check_letter_usage(wrongLetters, correctLetters, letter)
@@ -207,11 +348,11 @@ def main():
                 
 
 
+'''
 
 
 if __name__ == '__main__': 
     main()
-
 
 
 
