@@ -1,0 +1,316 @@
+Short list of best practices for TCP socket servers in Python
+
+Use SO_REUSEADDR before bind() so restarting the server doesn’t get blocked by TIME_WAIT.
+
+Message framing — never assume recv() returns a full logical message. Use one of:
+
+length-prefixed messages (recommended), or
+
+newline-delimited messages (simpler but requires careful handling).
+
+Avoid sleeping in the accept loop — don’t time.sleep() after accept; that wastes time and is unnecessary.
+
+Use concurrency for clients — either threading, selectors (single-threaded event loop), or asyncio.
+ For many simple chat servers thread-per-client is easiest to understand; for high scale prefer asyncio or selectors.
+
+Protect shared state with threading.Lock (or asyncio primitives) when multiple threads access shared data
+ (list of clients, etc.).
+
+Graceful shutdown — handle KeyboardInterrupt and close the listening socket and client sockets cleanly.
+
+
+Set socket timeouts or detect dead clients, so threads don’t block forever on failures.
+
+Log and catch exceptions — never let client exceptions crash the server.
+
+Validate and sanitize input — treat client data as untrusted.
+
+Resource limits — limit number of simultaneous connections and message size — avoid DoS vectors.
+
+Why length-prefix framing
+
+TCP is a stream: message boundaries are not preserved. A safe pattern is to send a 
+4-byte big-endian length prefix followed by that many bytes of payload. 
+The receiver reads exactly 4 bytes for length, then reads length bytes.
+ This avoids partial reads or message coalescing bugs.
+ 
+ #!/usr/bin/env python3
+import socket, struct, threading, sys
+
+HOST = "127.0.0.1"
+PORT = 12345
+
+def send_msg(sock, data: bytes):
+    sock.sendall(struct.pack("!I", len(data)) + data)
+
+def recv_exact(sock, n):
+    buf = bytearray()
+    while len(buf) < n:
+        chunk = sock.recv(n - len(buf))
+        if not chunk:
+            raise ConnectionError("closed")
+        buf.extend(chunk)
+    return bytes(buf)
+
+def recv_msg(sock):
+    header = recv_exact(sock, 4)
+    (length,) = struct.unpack("!I", header)
+    return recv_exact(sock, length)
+
+def listen_loop(sock):
+    try:
+        while True:
+            msg = recv_msg(sock)
+            print("<<", msg.decode('utf-8', errors='replace'))
+    except Exception:
+        print("Disconnected")
+        sys.exit(0)
+
+with socket.create_connection((HOST, PORT)) as s:
+    t = threading.Thread(target=listen_loop, args=(s,), daemon=True)
+    t.start()
+    try:
+        while True:
+            line = input()
+            if line.strip() == "/quit":
+                send_msg(s, b"/quit")
+                break
+            send_msg(s, line.encode("utf-8"))
+    except KeyboardInterrupt:
+        pass
+
+
+
+
+#!/usr/bin/env python3
+"""
+Simple threaded chat server using length-prefixed messages.
+Server class handles accept loop and broadcasting.
+ClientConnection class handles per-client I/O in a thread.
+"""
+
+import socket
+import threading
+import struct
+import signal
+import sys
+from typing import Tuple, Set
+
+# Config
+HOST = "0.0.0.0"
+PORT = 12345
+MAX_MESSAGE_SIZE = 10 * 1024  # 10 KB
+
+
+def send_msg(conn: socket.socket, data: bytes) -> None:
+    """Send length-prefixed message (4-byte big-endian length)."""
+    length = len(data)
+    header = struct.pack("!I", length)
+    conn.sendall(header + data)
+
+
+def recv_exact(conn: socket.socket, n: int) -> bytes:
+    """Receive exactly n bytes or raise ConnectionError."""
+    buf = bytearray()
+    while len(buf) < n:
+        chunk = conn.recv(n - len(buf))
+        if not chunk:
+            raise ConnectionError("Socket closed while receiving")
+        buf.extend(chunk)
+    return bytes(buf)
+
+
+def recv_msg(conn: socket.socket) -> bytes:
+    """Receive a single length-prefixed message."""
+    header = recv_exact(conn, 4)
+    (length,) = struct.unpack("!I", header)
+    if length <= 0 or length > MAX_MESSAGE_SIZE:
+        raise ValueError(f"Invalid message length: {length}")
+    payload = recv_exact(conn, length)
+    return payload
+
+
+class ClientConnection(threading.Thread):
+    """
+    Handle a single client connection.
+    - receives messages and forwards them to the server for broadcast
+    - on shutdown, cleans up its socket and informs server
+    """
+    def __init__(self, server: "Server", conn: socket.socket, addr: Tuple[str, int]):
+        super().__init__(daemon=True)  # daemon so threads don't block process exit
+        self.server = server
+        self.conn = conn
+        self.addr = addr
+        self._running = True
+
+    def run(self):
+        try:
+            welcome = f"Welcome! You are {self.addr}\n".encode("utf-8")
+            send_msg(self.conn, welcome)
+        except Exception:
+            # If can't send welcome, close immediately
+            self.cleanup()
+            return
+
+        try:
+            while self._running:
+                try:
+                    data = recv_msg(self.conn)  # bytes
+                except ConnectionError:
+                    break
+                except ValueError as ve:
+                    # Bad message from client; log and break
+                    print(f"[{self.addr}] bad message framing: {ve}")
+                    break
+
+                # decode safely (clients should send utf-8)
+                try:
+                    text = data.decode("utf-8", errors="replace").strip()
+                except Exception:
+                    text = "<unreadable>"
+
+                if text.lower() == "/quit":
+                    # client requested disconnect
+                    break
+
+                # broadcast with server
+                broadcast = f"{self.addr}: {text}".encode("utf-8")
+                self.server.broadcast(broadcast, exclude=self)
+        except Exception as exc:
+            print(f"[{self.addr}] exception: {exc}")
+        finally:
+            self.cleanup()
+
+    def send(self, data: bytes) -> None:
+        """Send data to this client. Server calls this when broadcasting."""
+        try:
+            send_msg(self.conn, data)
+        except Exception:
+            # if sending fails, close the connection
+            self._running = False
+            self.cleanup()
+
+    def cleanup(self):
+        """Remove self from server and close socket."""
+        if getattr(self, "_cleaned", False):
+            return
+        self._cleaned = True
+        try:
+            self.conn.shutdown(socket.SHUT_RDWR)
+        except Exception:
+            pass
+        try:
+            self.conn.close()
+        except Exception:
+            pass
+        self.server.remove_client(self)
+        print(f"[{self.addr}] disconnected")
+
+
+class Server:
+    """
+    Accepts connections and manages clients.
+    Methods:
+    - start() : starts listening and accepting clients (blocking call).
+    - stop()  : triggers a graceful shutdown.
+    """
+    def __init__(self, host: str = HOST, port:
+	int = PORT, backlog: int = 10):
+        self.host = host
+        self.port = port
+        self.backlog = backlog
+        self.sock: socket.socket | None = None
+        self.clients: Set[ClientConnection] = set()
+        self.clients_lock = threading.Lock()
+        self._running = threading.Event()
+
+    def start(self):
+        """Start listening and accepting clients. This call blocks until stopped."""
+        self.sock = socket.socket(socket.AF_INET,
+		socket.SOCK_STREAM)
+        # Best practice: allow reuse of address immediately after restart
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind((self.host, self.port))
+        self.sock.listen(self.backlog)
+        # Optionally set a timeout on accept
+		to check shutdown flag periodically
+        self.sock.settimeout(1.0)
+
+        print(f"Server listening on {self.host}:{self.port}")
+        self._running.set()
+
+        try:
+            while self._running.is_set():
+                try:
+                    conn, addr = self.sock.accept()
+                except socket.timeout:
+                    continue  # loop to check running flag again
+                except OSError:
+                    # socket closed during shutdown
+                    break
+
+                print(f"Accepted connection from {addr}")
+                client = ClientConnection(self, conn, addr)
+                with self.clients_lock:
+                    self.clients.add(client)
+                client.start()
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt - shutting down server")
+        finally:
+            self.stop()
+
+    def broadcast(self, message: bytes, exclude: ClientConnection | None = None):
+        """Send message to all clients except exclude (if provided)."""
+        with self.clients_lock:
+            # Copy to prevent modification during iteration
+            targets = list(self.clients)
+        for client in targets:
+            if client is exclude:
+                continue
+            client.send(message)
+
+    def remove_client(self, client: ClientConnection):
+        """Remove a client from the client set (called by ClientConnection)."""
+        with self.clients_lock:
+            self.clients.discard(client)
+
+    def stop(self):
+        """Stop the server and close all client sockets."""
+        if not self._running.is_set():
+            return
+        print("Stopping server...")
+        self._running.clear()
+
+        # Close listening socket to break accept()
+        if self.sock:
+            try:
+                self.sock.close()
+            except Exception:
+                pass
+            self.sock = None
+
+        # Close all clients
+        with self.clients_lock:
+            clients = list(self.clients)
+
+        for client in clients:
+            try:
+                client._running = False
+                client.cleanup()
+            except Exception:
+                pass
+
+        print("Server stopped.")
+
+
+if __name__ == "__main__":
+    server = Server(HOST, PORT)
+
+    # Optional: allow graceful shutdown on SIGINT/SIGTERM
+    def _signal_handler(signum, frame):
+        print(f"Signal {signum} received, shutting down...")
+        server.stop()
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+
+    server.start()
