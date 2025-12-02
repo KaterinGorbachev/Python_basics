@@ -9,7 +9,7 @@ Code [description](https://github.com/KaterinGorbachev/Python---basics-/blob/mai
 
 Create [TCP server](https://github.com/KaterinGorbachev/Python_basics/tree/main/studying_socket/servidor-chat-colorama-class) that returns IP address or Hostname back to the clients request. Using classes to create reusable Server object where all functionality (start server, accept clients, resolve hostnames, close connection) is grouped into methods.
 
-´´´python 
+```python 
 
     class Server: 
     def __init__(self, host: str = HOST, port: int = PORT, backlog: int = clients_limit):
@@ -60,13 +60,13 @@ Create [TCP server](https://github.com/KaterinGorbachev/Python_basics/tree/main/
                 print(Style.DIM+ f"Error {e}")
                 print(Style.RESET_ALL)
                 pass
-´´´
+```
 
 
-´´´python 
+```python 
     def __init__(self, host: str = HOST, port: int = PORT, backlog: int = clients_limit):
 
-´´´
+```
 Runs automatically when you create a new Server instance.
 Stores:
     - host → the IP address/interface the server listens on (e.g. "127.0.0.1" or "0.0.0.0")
@@ -80,71 +80,71 @@ self.sock is set to None initially — socket is not created yet.
 
 Colourfully prints states in console with
 
-´´´python 
+```python 
     from colorama import just_fix_windows_console
     just_fix_windows_console()
     from colorama import Fore, Back, Style
-´´´ 
+``` 
 
-´´´python 
+```python 
     print(Style.DIM+ f"Server listening on {self.host}:{self.port}")
     print(Style.RESET_ALL)
-´´´
+```
 
 
 Start server on a given HOST and PORT 
 
-´´´python
+```python
     serv = Server()
     serv.start()
-´´´
+```
 
 Accept clients
 
-´´´python 
+```python 
     conn, addr = serv.connect_clients()
-´´´
+```
 
 connect_clients() internally calls:
 
-´´´python 
+```python 
     conn, addr = self.sock.accept()
-´´´
+```
 
 
 Create TCP client for the server. 
 
-´´´python
+```python
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((HOST, PORT))
-´´´
+```
 
 
 Function to get user input: 
 
-´´´python
+```python
     def user_input(): 
     print(Style.DIM + "Enter hostname or IPv4 address")
     print(Style.RESET_ALL)
     msg = input(Fore.BLUE + "> ").strip()
     print(Style.RESET_ALL)
     return msg
-´´´
+```
 
 
 Request to the server with slight delay for nicer UX: 
 
-´´´python 
+```python 
     print(Style.DIM + "Searching...")
     print(Style.RESET_ALL)
     time.sleep(0.3)
     client_socket.sendall(msg.encode('UTF-8'))
-´´´
+```
 
 
 Close clients socket and connetion with word 'close': 
 
-´´´python 
+```python 
     if msg == "close": 
     print(Fore.GREEN + "Connection closed")
     print(Style.RESET_ALL)
@@ -152,7 +152,7 @@ Close clients socket and connetion with word 'close':
     client_socket.shutdown(socket.SHUT_RDWD)
     client_socket.close()
     break
-´´´
+```
 
 
 Create [TCP server and client](https://github.com/KaterinGorbachev/Python_basics/tree/main/studying_socket/socket-tcp-file-wrap-connect-mysql-login-logout-get-api-data) to make user registration in MySQL, users login, advanced functionality with API request for logged in users, closing users session and closing connection with server from the clients part. Logging in console and file. 
@@ -166,9 +166,9 @@ The server accepts multiple clients, receives messages without blocking the main
 
 Non-Blocking Mode
 
-´´´python
+```python
     select.select
-´´´
+```
 
 
 The server uses select to monitor:
@@ -189,13 +189,13 @@ so that each client keeps its own response.
 
 
 
-´´´python 
+```python 
     # Create a TCP server socket
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setblocking(False)               # Non-blocking mode
     server.bind(('', 65432))                # Listen on all interfaces, port 65432
     server.listen()
-´´´
+```
 
 
 # Lists required by select()
