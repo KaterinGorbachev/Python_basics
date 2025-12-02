@@ -198,57 +198,58 @@ so that each client keeps its own response.
 ```
 
 
-# Lists required by select()
-inputs = [server]                       # Sockets to read from (server + clients)
-outputs = []                            # Sockets ready to write responses
-output_messages = {}                    # Stores messages for each client
+Lists required by select()
+
+    - inputs = [server]                       # Sockets to read from (server + clients)
+    - outputs = []                            # Sockets ready to write responses
+    - output_messages = {}                    # Stores messages for each client
 
 
 How It Works
 1. Server Setup
 
-Creates a TCP socket
-
-Enables non-blocking mode
-
-Starts listening for new clients
-
-Registers the server socket in inputs so select can notify when a new client connects
+    Creates a TCP socket
+    
+    Enables non-blocking mode
+    
+    Starts listening for new clients
+    
+    Registers the server socket in inputs so select can notify when a new client connects
 
 2. Handling New Connections
 
-When the server socket becomes readable, it means a client is trying to connect:
-
-client, address = server.accept()
-inputs.append(client)
-
-
-The new client socket is also set to non-blocking and added to the inputs list.
+    When the server socket becomes readable, it means a client is trying to connect:
+    
+    client, address = server.accept()
+    inputs.append(client)
+    
+    
+    The new client socket is also set to non-blocking and added to the inputs list.
 
 3. Handling Incoming Data
 
-If a client socket is readable, it means the client sent data:
-
-message = socket.recv(2048).decode()
-
-
-Then the server decides how to respond:
-
-If the client says "hola" → respond with "Hola caracola"
-
-If the message is empty ('') → client disconnected. Empty string indicates a clean disconnect. The server closes the socket and removes it from the list of active inputs.
-
-Otherwise → send the current timestamp
-
-Responses are placed in a message buffer, not sent immediately.
+    If a client socket is readable, it means the client sent data:
+    
+    message = socket.recv(2048).decode()
+    
+    
+    Then the server decides how to respond:
+    
+    If the client says "hola" → respond with "Hola caracola"
+    
+    If the message is empty ('') → client disconnected. Empty string indicates a clean disconnect. The server closes the socket and removes it from the list of active inputs.
+    
+    Otherwise → send the current timestamp
+    
+    Responses are placed in a message buffer, not sent immediately.
 
 4. Sending Responses
 
-If a socket becomes writable, meaning it is ready for sending:
-
-socket.send(output_messages[socket].encode())
-
-Once the message is sent, the socket is removed from outputs.
+    If a socket becomes writable, meaning it is ready for sending:
+    
+    socket.send(output_messages[socket].encode())
+    
+    Once the message is sent, the socket is removed from outputs.
 
 
 
