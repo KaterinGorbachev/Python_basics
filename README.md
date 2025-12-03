@@ -155,7 +155,91 @@ Close clients socket and connetion with word 'close':
 ```
 
 
+---
+
+
 Create [TCP server and client](https://github.com/KaterinGorbachev/Python_basics/tree/main/studying_socket/socket-tcp-file-wrap-connect-mysql-login-logout-get-api-data) to make user registration in MySQL, users login, advanced functionality with API request for logged in users, closing users session and closing connection with server from the clients part. Logging in console and file. 
+
+Registered user checked by the server for a token: 
+
+```python
+# ---- TOKEN CHECK ----
+    received_token = read_line(file)
+    logger.debug(f"Token recibido: {received_token}")
+
+    
+    EXPECTED_TOKEN = "ABC12345" # Test token
+
+    if received_token != EXPECTED_TOKEN:
+        logger.error("Token inválido")
+        file.write("Error: Token inválido\n")
+        file.flush()
+        return
+    else: 
+        file.write('200\n')
+        file.flush()
+
+```
+
+Client gets the token from the server in case of successful logging, saves it and sends on any request by logged users: 
+
+```python
+    def client_login(file):
+        send_line(file, "login")
+    
+        email = input("Introduce email: ")
+        send_line(file, email)
+    
+        answer = read_line(file)
+        if answer != '200': 
+            print(answer)
+            return
+    
+        password = input("Introduce password: ")
+        send_line(file, password)
+    
+        first_line = read_line(file)
+        print("\n>>> Servidor:", first_line)
+    
+        if first_line == "session":
+            token = read_line(file)
+            print("Token recibido:", token)
+            return token
+    
+        return None
+
+```
+Logged in requests: 
+
+```python 
+    def action_id(file, token):
+        """User must send their token first."""
+        send_line(file, 'token')
+        send_line(file, token)
+        answer = read_line(file)
+        if answer != '200': 
+            print("\n>>> Servidor:", answer)
+            return
+        else: 
+    
+            send_line(file, "id")
+            rid = input("Introduce ID: ")
+            valid, message = isIntegerId(rid)
+            while not valid: 
+                print(message)
+                rid = input("Introduce ID: ")
+                valid, message = isIntegerId(rid)
+    
+            if valid: 
+                send_line(file, rid)
+                answer = read_line(file)
+                print("\n>>> Servidor:", answer)
+
+```
+
+
+
+---
 
 
 Non-Blocking [TCP Server Using select](https://github.com/KaterinGorbachev/Python_basics/tree/main/studying_socket/chat_tcp_select)
