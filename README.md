@@ -353,7 +353,7 @@ Server.py returns page in the Browser.
 
 Python code to read request from Browser and return a specific file with corresponding MIME type. 
 
-Run server.py, then oen loaclhost:65534 in the Browser.
+Run server.py, then open localhost:65534 in the Browser.
 
 ```python
             if path == '/styles/style.css': 
