@@ -338,6 +338,56 @@ How It Works
 
 
 
+-----
+## HTTP server for HTML5 page with JavaScript and CSS
+
+<img width="1850" height="1068" alt="image" src="https://github.com/user-attachments/assets/04cf4ae1-e846-4901-bca5-c66f520a9d69" />
+
+
+----
+
+
+Using AXIOS getting information from https://restcountries.com/v3.1/name. 
+
+Server.py returns page in the Browser. 
+
+Python code to read request from Browser and return a specific file with corresponding MIME type. 
+
+Run server.py, then oen loaclhost:65534 in the Browser.
+
+```python
+            if path == '/styles/style.css': 
+                with open('styles/style.css', 'r', encoding='utf-8') as f:
+                    css_content = f.read()
+                response_headers = (
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/css; charset=UTF-8\r\n"
+                    f"Content-Length: {len(css_content.encode('utf-8'))}\r\n"
+                    "Connection: close\r\n"
+                    "\r\n"
+                )
+                full_response = response_headers + css_content
+                conn.sendall(full_response.encode('utf-8'))
+
+            if path == '/scripts/isValidCountryName.js': 
+                with open('scripts/isValidCountryName.js', 'r', encoding='utf-8') as f:
+                    css_content = f.read()
+                response_headers = (
+                    "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/javascript; charset=UTF-8\r\n"
+                    f"Content-Length: {len(css_content.encode('utf-8'))}\r\n"
+                    "Connection: close\r\n"
+                    "\r\n"
+                )
+                full_response = response_headers + css_content
+                conn.sendall(full_response.encode('utf-8'))
+
+```
+
+
+
+
+
 
 
 
